@@ -1,638 +1,453 @@
 
-# Introducción al Análisis de Datos Espaciales usando R
+# Visualización de Datos Espaciales (Introducción)
 
-Existen muchas herramientas para el análisis de datos espaciales, muchas de ellas intuitivas y diseñadas para la ubicación de puntos en un mapa y el cálculo de algunos resúmenes estadísticos y la identificación de clústeres basados en la autocorrelación espacial (son los llamados modelos LISA), usando paquetes como ArcGIS o QGIS (el primero con un costo alrededor de los U\$ 6.000 o U\$ 7.000, el segundo gratuito.
+En el tratamiento de datos espaciales un aspecto importante es la visualización de los mismos. Existen múltiples programas que incorporan elementos para su análisis pero muy pocos que se integran correctamente con los Sistemas de Información Geográfica (_GIS_ por su nombre en inglés).
 
-Como se ha discutio, **R** es un software gratuito que permite incorporar análisis espacial en múltiples niveles y analizar, no sólo modelos de autocorrelación espacial, también modelos de interdependencia espacial.
+En este módulo haremos un ejercicio práctico para algunos de los elementos básicos de visualización mediante programación en R y, posteriormente, emplearemos otros elementos de visualización. Siempre basándonos en uso de software libre y código abierto.
 
-## Carga de Paquetes para Análisis Espacial
+## Censo Nacional Agropecuario (análisis de caso)
 
-Los paquetes más comunes son:
+En el siguiente enlace: https://www.dropbox.com/sh/mktsl3f5iehnvf8/AACOjUSss8sVTcHgH6s2twiSa?dl=0 se puede acceder a las tablas que contienen los resultados del Tercer Censo Nacional Agropecuario (2014).
+
+Otra opción es acceder directamente a la descarga de las tablas a través del enlace http://www.dane.gov.co/index.php/estadisticas-por-tema/agropecuario/censo-nacional-agropecuario-2014
+
+Las tablas que se aprecian son:
+
+
+|Archivo|Descripción|Casos|Variables|
+|--- |---        |  ---|      ---|
+|S01_15(Unidad_productora)|Contiene la identificación de las Unidades Productoras Agropecuaria_ UPA y Unidades Productoras No Agropecuaria_ UPNA, el tipo de territorialidad (Resguardo indígena y tierras de las comunidades negras), Uso del suelo, naturaleza jurídica, área de la UPA y uso agropecuario, y predominancia de tenencia.|0|379|
+|S06A(Cultivos)|Corresponde al inventario y prácticas agrícolas y pecuaria en la UPA y descripción básica de cultivos acuícolas. asi como la sustentabilidad de la actividad agropecuaria, tanto en la gestión sobre recursos naturales como la gestión para la producción.|0|23|
+|S06BD(Frutales_y_forestales_dispersos,_y_viveros)|Contiene los frutales y forestales dispersos por especie, la cantidad de pencas, arbustos o árboles existentes en la UPA que no están sembrados en un lote compacto o no tienen una distancia de siembra regular. Para los viveros agrícolas y forestales, el registro corresponde a las especies y la cantidad de plántulas.|0|11|
+|S07D(Acuicultura)|La actividad acuícola corresponde a la orientación (alevinaje, carne, ciclo completo y ornamentales) y las especies que han sido cultivadas en la UPA en los últimos 12 meses. Igualmente número de cosechas y producción.|0|13|
+|S08(Pesca_artesanal)|Corresponde a actividades de Pesca ARTESANAL: Sitio de realización, periodo, tipo de arte para pescar, embarcación, especies captCorresponde a actividades de Pesca ARTESANAL: Sitio de realización, periodo, tipo de arte para pescar, embarcación, especies capturadas y volumen de especies capturadas y finalidad de la pesca.uradas y volumen de especies capturadas y finalidad de la pesca.|0|19|
+|S09(Maquinaria_uso_agropecuario)|Contiene el inventario de maquinaria clasificada de acuerdo con dos rangos de antigüedad: menor a cinco años y de cinco o más años.|0|11|
+|S10(Construcciones_uso_agropecuario)|Contiene las construcciones para uso agropecuario y se registra el área que ocupa en metros cuadrados.|0|10|
+|S14(Actividad_no_agropecuaria)|Contiene información sobre las actividades no agropecuarias desarrolladas en la UPA o UPNA: Las cuales se clasifican en servicios de apoyo a las actividades agropecuarias, transformación de materias primas agropecuarias, comercio, servicios, minería con títulos, minería sin títulos y gas, generación y transmisión de energía, así como actividades de defensa nacional, orden público y actividades de seguridad.|0|79|
+|S15H(Hogares)|Contiene el número de Hogares al interior de cada vivienda y percepción de pobreza subjetiva y desplazamiento dirigida al jefe del hogar o su cónyuge.|0|21|
+|S15P(Personas)|Contiene el registro de todas las personas residentes habituales del hogar, captando información básica sobre cada uno de sus miembros: parentesco, sexo, edad, autorreconocimiento étnico, sitio o persona con quien permanecen los niños menores de cinco años, alfabetismo, asistencia educativa, nivel de escolaridad y afiliación a salud.|0|24|
+|S15V(Viviendas)|Contiene el número de viviendas existentes en la UPA, condición de ocupación de la vivienda y tenencia de servcios públicos y condición de materiales predominante de la vivienda.|0|16|
+
+El primer paso, antes de cualquier otra cosa, es importar los datos. Previamente, las tablas fueron preparadas en el archivo `CensoAgro.RData` (incluido en el enlace) para su manejo en el programa; en todo caso, el procedimiento de importación es el siguiente:
 
 
 ```R
-library(maps)         ## Para hacer proyecciones
-library(maptools)     ## Para Gestionar Datos
-library(sp)           ## Para Gestionar Datos
-library(spdep)        ## Para al análisis de la Autocorrelación Espacial
-library(gstat)        ## Para el uso de Elementos de Geoestadística
-library(splancs)      ## Para el análisis de Kernel
-library(spatstat)     ## Para el uso de Elementos de Geoestadística
-library(pgirmess)     ## Para al análisis de la Autocorrelación Espacial
-library(RColorBrewer) ## Provee Elementos de Visualización
-library(classInt)     ## Permite la contrucción fácil de Intervalos de Clase
-library(spgwr)        ## Provee ejemplos de modelamiento
+# library(readr)
+#
+#
+# Cultivos <- read_csv("S06A(Cultivos).csv")
+# Frutales <- read_csv("S06BD(Frutales_y_forestales_dispersos,_y_viveros).csv")
+# Acuicultura <- read_csv("S07D(Acuicultura).csv")
+# Pesca_artesanal <- read_csv("S08(Pesca_artesanal).csv")
+# Maquinaria <- read_csv("S09(Maquinaria_uso_agropecuario).csv")
+# Construcciones <- read_csv("S10(Construcciones_uso_agropecuario).csv")
+# Act_no_agro <- read_csv("S14(Actividad_no_agropecuaria).csv")
+# Hogares <- read_csv("S15H(Hogares).csv")
+# Personas <- read_csv("S15P(Personas).csv")
+# Viviendas <- read_csv("S15V(Viviendas).csv")
 ```
 
-    Loading required package: sp
-    Checking rgeos availability: TRUE
-    Loading required package: Matrix
-    
-    Spatial Point Pattern Analysis Code in S-Plus
-     
-     Version 2 - Spatial and Space-Time analysis
-    
-    Loading required package: nlme
-    Loading required package: rpart
-    
-    spatstat 1.52-1       (nickname: 'Apophenia') 
-    For an introduction to spatstat, type 'beginner' 
-    
-    
-    Note: spatstat version 1.52-1 is out of date by more than 6 months; we recommend upgrading to the latest version.
-    
-    Attaching package: 'spatstat'
-    
-    The following object is masked from 'package:gstat':
-    
-        idw
-    
-    NOTE: This package does not constitute approval of GWR
-    as a method of spatial analysis; see example(gwr)
-    
+Los datos importados traen algunas características heradadas:
 
-## Visualizar algunos datos
+`[1] "tbl_df"     "tbl"        "data.frame"`
 
-Vamos a cargar algunos datos para ver su estructura:
+Se requiere convertirlos en `data.frame`; el código para ello es:
 
 
 ```R
-load("Datasets.RData")
-ls()
+# Cultivos<-as.data.frame(Cultivos)
+# Frutales<-as.data.frame(Frutales)
+# Acuicultura<-as.data.frame(Acuicultura)
+# Pesca_artesanal<-as.data.frame(Pesca_artesanal)
+# Maquinaria<-as.data.frame(Maquinaria)
+# Construcciones<-as.data.frame(Construcciones)
+# Act_no_agro<-as.data.frame(Act_no_agro)
+# Hogares<-as.data.frame(Hogares)
+# Personas<-as.data.frame(Personas)
+# Viviendas<-as.data.frame(Viviendas)
 ```
 
-
-<ol class=list-inline>
-	<li>'crime'</li>
-	<li>'dat88'</li>
-	<li>'election'</li>
-	<li>'laos'</li>
-	<li>'mat88'</li>
-	<li>'volcano'</li>
-</ol>
-
-
-
-Veamos de qué se trata la base 'crime':
+Y, para salvar todo lo importado:
 
 
 ```R
-head(crime)
+# save(list = ls(all = TRUE), file = 'CensoAgro.RData')
+```
+
+Como los datos han sido preparados, vamos a proceder a cargarlos desde el archivo antes mencionado:
+
+
+```R
+load('CensoAgro.RData')
+```
+
+Por cuestiones de capacidad de memoria RAM en el laboratorio vamos a procesar sólo los datos relacionados con **Acuicultura**. Una de las variables contenidas en el `data.frame` es la producción total (en kilogramos) de la planta. La etiqueta de la variables es `P_S7P100`. Veamos el encabezado de los datos:
+
+
+```R
+head(Acuicultura)
 ```
 
 
 <table>
-<thead><tr><th scope=col>ID</th><th scope=col>LONG</th><th scope=col>LAT</th></tr></thead>
+<thead><tr><th scope=col>TIPO_REG</th><th scope=col>PAIS</th><th scope=col>P_DEPTO</th><th scope=col>P_MUNIC</th><th scope=col>UC_UO</th><th scope=col>ENCUESTA</th><th scope=col>COD_VEREDA</th><th scope=col>P_S7PNUMPEZ</th><th scope=col>P_S7P96</th><th scope=col>P_S7P97</th><th scope=col>P_S7P98</th><th scope=col>P_S7P99</th><th scope=col>P_S7P100</th></tr></thead>
 <tbody>
-	<tr><td>1        </td><td>-76.65159</td><td>39.23941 </td></tr>
-	<tr><td>2        </td><td>-76.47434</td><td>39.35274 </td></tr>
-	<tr><td>3        </td><td>-76.51726</td><td>39.25874 </td></tr>
-	<tr><td>4        </td><td>-76.52607</td><td>39.40707 </td></tr>
-	<tr><td>5        </td><td>-76.51001</td><td>39.33571 </td></tr>
-	<tr><td>6        </td><td>-76.70375</td><td>39.26605 </td></tr>
+	<tr><td>7        </td><td>170      </td><td>05       </td><td>05001    </td><td>00020001 </td><td>000447973</td><td>05001006 </td><td>1        </td><td>41190100 </td><td> 2       </td><td> 200     </td><td>2.5      </td><td> 1.00    </td></tr>
+	<tr><td>7        </td><td>170      </td><td>05       </td><td>05001    </td><td>00156152 </td><td>000158786</td><td>05001040 </td><td>1        </td><td>41190200 </td><td> 1       </td><td>1200     </td><td>6.5      </td><td> 7.80    </td></tr>
+	<tr><td>7        </td><td>170      </td><td>05       </td><td>05001    </td><td>00200001 </td><td>000158890</td><td>05001016 </td><td>1        </td><td>41190200 </td><td>12       </td><td> 100     </td><td>5.0      </td><td> 6.00    </td></tr>
+	<tr><td>7        </td><td>170      </td><td>05       </td><td>05001    </td><td>00210001 </td><td>000447969</td><td>05001006 </td><td>1        </td><td>41190200 </td><td> 3       </td><td> 400     </td><td>2.5      </td><td> 3.00    </td></tr>
+	<tr><td>7        </td><td>170      </td><td>05       </td><td>05001    </td><td>00400001 </td><td>000159975</td><td>05001031 </td><td>1        </td><td>41190400 </td><td> 1       </td><td>  20     </td><td>3.0      </td><td> 0.06    </td></tr>
+	<tr><td>7        </td><td>170      </td><td>05       </td><td>05001    </td><td>00400001 </td><td>000444189</td><td>05001006 </td><td>1        </td><td>41190200 </td><td> 9       </td><td> 300     </td><td>5.0      </td><td>13.50    </td></tr>
 </tbody>
 </table>
 
 
 
-Veamos, ahora, cuál es la dimensión del 'data.frame':
+Vamos a calcular el consolidado de la producción total en objetos tipo `data.frame` nuevos. En asu orden:
+ * Producción Total por Vereda
+ * Producción Total por Municipio
+ * Producción Total por Departamento
+
+La sintaxis empleada es:
 
 
 ```R
-dim(crime); data<-crime
+P.Total.Ver<-aggregate(P_S7P100~COD_VEREDA, FUN = sum, data = Acuicultura)
+P.Total.Mun<-aggregate(P_S7P100~P_MUNIC, FUN = sum, data = Acuicultura)
+P.Total.Dep<-aggregate(P_S7P100~P_DEPTO, FUN = sum, data = Acuicultura)
+```
+
+¿Qué obtuvimos?
+
+
+```R
+summary(P.Total.Ver)
+summary(P.Total.Mun)
+summary(P.Total.Dep)
 ```
 
 
-<ol class=list-inline>
-	<li>1061</li>
-	<li>3</li>
-</ol>
+      COD_VEREDA           P_S7P100       
+     Length:8897        Min.   :       0  
+     Class :character   1st Qu.:       2  
+     Mode  :character   Median :     100  
+                        Mean   :    6966  
+                        3rd Qu.:    1068  
+                        Max.   :11362255  
 
 
 
-Vamos, ahora, a crear una matriz de coordenadas. Para ello empleamos la orden _cbind()_. Veamos de qué consta:
+       P_MUNIC             P_S7P100       
+     Length:1052        Min.   :       0  
+     Class :character   1st Qu.:     169  
+     Mode  :character   Median :    2630  
+                        Mean   :   58915  
+                        3rd Qu.:   19871  
+                        Max.   :11408723  
+
+
+
+       P_DEPTO             P_S7P100       
+     Length:33          Min.   :       0  
+     Class :character   1st Qu.:   97568  
+     Mode  :character   Median :  854676  
+                        Mean   : 1878126  
+                        3rd Qu.: 2202544  
+                        Max.   :13101733  
+
+
+Vamos a trabajar los datos por municipio, por lo que procesaremos el objeto `P.Total.Ver`.
+
+El siguiente paso es obtener un sistema de coordenadas para su proyección. Vamos a emplar el sistema de coordenadas publicado en el Geoportal del DANE: https://geoportal.dane.gov.co/v2/. También se encuentran disponibles y ordenadas en el enlace suministrado al inicio dentro de la carpeta etiquetada como `Mapas`.
+
+Para crear la proyección requerimos la función `readShapePoly` de la librería `maptools`:
 
 
 ```R
-help(cbind)
+library(maptools)
+map <- readShapePoly("Mapas/MunicipiosVeredas")
+summary(map)
+plot(map)
 ```
 
-
-```R
-sp_point <- cbind(data$LONG, data$LAT) # Construimos la matriz
-colnames(sp_point) <- c("LONG","LAT") # Le damos nombre a las columnas de la matriz
-head(sp_point)
-```
+    Warning message:
+    "use rgdal::readOGR or sf::st_read"
 
 
-<table>
-<thead><tr><th scope=col>LONG</th><th scope=col>LAT</th></tr></thead>
-<tbody>
-	<tr><td>-76.65159</td><td>39.23941 </td></tr>
-	<tr><td>-76.47434</td><td>39.35274 </td></tr>
-	<tr><td>-76.51726</td><td>39.25874 </td></tr>
-	<tr><td>-76.52607</td><td>39.40707 </td></tr>
-	<tr><td>-76.51001</td><td>39.33571 </td></tr>
-	<tr><td>-76.70375</td><td>39.26605 </td></tr>
-</tbody>
-</table>
+    Object of class SpatialPolygonsDataFrame
+    Coordinates:
+             min       max
+    x -81.735672 -66.84722
+    y  -4.228392  13.39449
+    Is projected: NA 
+    proj4string : [NA]
+    Data attributes:
+        DPTOMPIO      DPTO_CCDGO    MPIO_CCDGO        MPIO_CNMBR     MPIO_CCNCT  
+     05001  :   1   05     :125   001    :  33   BUENAVISTA:   4   05001  :   1  
+     05002  :   1   15     :123   250    :   8   LA UNIÃ“N :   4   05002  :   1  
+     05004  :   1   25     :116   318    :   7   VILLANUEVA:   4   05004  :   1  
+     05021  :   1   68     : 87   400    :   7   ALBANIA   :   3   05021  :   1  
+     05030  :   1   52     : 64   660    :   7   ARGELIA   :   3   05030  :   1  
+     05031  :   1   73     : 47   245    :   6   BOLÃ\215VAR  :   3   05031  :   1  
+     (Other):1115   (Other):559   (Other):1053   (Other)   :1100   (Other):1115  
 
 
 
-El paso siguiente, al menos para el ejercicio, es asociar las coordenadas a un sistema de proyección geográfica. Para lo cual usamos la orden _CRS()_. Veamos de qué se trata:
+![png](output_15_2.png)
 
 
-```R
-help(CRS)
-```
+Prestemos atención a dos líneas en particular: `Is projected: NA` y `proj4string : [NA]`. Esto se traduce en que los datos, aunque con referencia de coordenadas (nótese el objeto `Coordinates`) no se encuentra conectado con un sistema de geodésico o de coordenadas por lo que debemos proceder a enlazarlo. Para ello vamos a emplear, en primer lugar, el sistema de coordenadas universal transversal de Mercator (en inglés Universal Transverse Mercator, UTM) disponible en el siguiente enlace: http://www.dmap.co.uk/utmworld.htm. Luego, debemos asociarlo al Sistema de Posicionamiento Global. Este utiliza el Sistema Geodésico Mundial (WGS84, por sus siglas en inglés World Geodetic System 1984) como su sistema de coordenadas de referencia: http://coordtrans.com/coordtrans/.
 
-Ahora, creamos el sistema de proyección:
-
-
-```R
-proj <- CRS("+proj=utm +zone=17 +datum=WGS84") # veamos las zonas en: http://www.dmap.co.uk/utmworld.htm
-```
-
-Con los elementos creados hasta el momento podemos crear el objeto espacial. En este caso, se trata de un marco de puntos espaciales _(Spatial Points Data Frame)_. Para ello usamos la orden _SpatialPointsDataFrame()_. Veamos de qué se trata:
+Pero no nos preocupemos, esto se soluciona con una orden simple:
 
 
 ```R
-help(SpatialPointsDataFrame)
-```
-
-Creamos el objeto espacial:
-
-
-```R
-data.sp <- SpatialPointsDataFrame(coords=sp_point,data,proj4string=proj)
-```
-
-Ahora, requerimos delimitar el espacio de proyección (algo similar a hacer _zoom_ en un mapa de google). Con la orden _bbox()_ determinamos los límites de coordenadas:
-
-
-```R
-bbox(data.sp) # Esto será de suma importancia cuando se quiera hacer la proyección sobre un mapa
-```
-
-
-<table>
-<thead><tr><th></th><th scope=col>min</th><th scope=col>max</th></tr></thead>
-<tbody>
-	<tr><th scope=row>LONG</th><td>-76.82981</td><td>-76.38756</td></tr>
-	<tr><th scope=row>LAT</th><td> 39.22488</td><td> 39.67995</td></tr>
-</tbody>
-</table>
-
-
-
-El siguiente paso es graficar los datos:
-
-
-```R
-par(mar=c(2,2,0.2,0.2))
-plot(data.sp,pch=16, cex=.5, axes=T)
-```
-
-
-![png](output_27_0.png)
-
-
-Co el fin de construir fácilmente los objetos espaciales, vamos a emplear la base de datos sobre elecciones presidenciales _"election"_ y aprovechamos sus atributos espaciales:
-
-
-```R
-summary(election)
+proj4string(map) <- CRS("+proj=utm +zone=17 +datum=WGS84")
+summary(map)
 ```
 
 
     Object of class SpatialPolygonsDataFrame
     Coordinates:
-              min       max
-    r1 -124.73142 -66.96985
-    r2   24.95597  49.37173
+             min       max
+    x -81.735672 -66.84722
+    y  -4.228392  13.39449
     Is projected: TRUE 
-    proj4string :
-    [+proj=lcc+lon_0=90w +lat_1=20n +lat_2=60n]
+    proj4string : [+proj=utm +zone=17 +datum=WGS84]
     Data attributes:
-             NAME         STATE_NAME     STATE_FIPS     CNTY_FIPS         FIPS     
-     Washington:  32   Texas   : 254   48     : 254   001    :  48   01001  :   1  
-     Jefferson :  26   Georgia : 159   13     : 159   003    :  48   01003  :   1  
-     Franklin  :  25   Virginia: 136   51     : 136   005    :  48   01005  :   1  
-     Jackson   :  24   Kentucky: 120   21     : 120   009    :  47   01007  :   1  
-     Lincoln   :  24   Missouri: 115   29     : 115   007    :  46   01009  :   1  
-     Madison   :  20   Kansas  : 105   20     : 105   011    :  46   01011  :   1  
-     (Other)   :2960   (Other) :2222   (Other):2222   (Other):2828   (Other):3105  
-          AREA              FIPS_num          Bush            Kerry        
-     Min.   :    1.731   Min.   : 1001   Min.   :     0   Min.   :      0  
-     1st Qu.:  435.218   1st Qu.:19048   1st Qu.:  2926   1st Qu.:   1778  
-     Median :  622.319   Median :29217   Median :  6357   Median :   4041  
-     Mean   :  965.434   Mean   :30699   Mean   : 19055   Mean   :  17940  
-     3rd Qu.:  930.802   3rd Qu.:46012   3rd Qu.: 15894   3rd Qu.:  10418  
-     Max.   :20174.584   Max.   :56045   Max.   :954764   Max.   :1670341  
-                                                                           
-        County_F         Nader             Total            Bush_pct    
-     Min.   :    0   Min.   :    0.0   Min.   :      0   Min.   : 0.00  
-     1st Qu.:19042   1st Qu.:    0.0   1st Qu.:   4808   1st Qu.:52.72  
-     Median :29211   Median :   14.0   Median :  10407   Median :61.17  
-     Mean   :30656   Mean   :  145.3   Mean   :  37140   Mean   :60.60  
-     3rd Qu.:46008   3rd Qu.:   67.0   3rd Qu.:  26553   3rd Qu.:69.36  
-     Max.   :56045   Max.   :13251.0   Max.   :2625105   Max.   :92.83  
-                                                                        
-       Kerry_pct       Nader_pct         MDratio             hosp       
-     Min.   : 0.00   Min.   :0.0000   Min.   :   0.00   Min.   : 0.000  
-     1st Qu.:30.21   1st Qu.:0.0000   1st Qu.:  37.28   1st Qu.: 1.305  
-     Median :38.47   Median :0.3024   Median :  65.58   Median : 3.290  
-     Mean   :38.90   Mean   :0.4009   Mean   :  93.03   Mean   : 5.670  
-     3rd Qu.:46.78   3rd Qu.:0.6332   3rd Qu.: 117.50   3rd Qu.: 6.740  
-     Max.   :90.05   Max.   :4.4667   Max.   :2189.54   Max.   :84.070  
-                                                                        
-        pcthisp          pcturban         urbrural        pctfemhh    
-     Min.   :  0.00   Min.   :  0.00   Min.   :0.000   Min.   : 0.00  
-     1st Qu.:  4.00   1st Qu.:  0.00   1st Qu.:3.000   1st Qu.: 9.60  
-     Median :  8.00   Median : 33.40   Median :6.000   Median :12.20  
-     Mean   : 44.46   Mean   : 35.29   Mean   :5.537   Mean   :12.99  
-     3rd Qu.: 24.00   3rd Qu.: 56.45   3rd Qu.:7.000   3rd Qu.:15.40  
-     Max.   :972.00   Max.   :100.00   Max.   :9.000   Max.   :41.10  
-                                                                      
-        pcincome        pctpoor         pctlt9ed       pcthsed      
-     Min.   :    0   Min.   : 0.00   Min.   : 0.0   Min.   :  0.00  
-     1st Qu.:15466   1st Qu.:11.00   1st Qu.: 8.9   1st Qu.: 61.10  
-     Median :17448   Median :15.10   Median :13.2   Median : 71.20  
-     Mean   :17788   Mean   :16.49   Mean   :14.3   Mean   : 68.34  
-     3rd Qu.:19818   3rd Qu.:20.40   3rd Qu.:18.7   3rd Qu.: 77.10  
-     Max.   :58096   Max.   :63.10   Max.   :56.3   Max.   :100.00  
-                                                                    
-        pctcoled        unemploy         pctwhtcl        homevalu     
-     Min.   : 0.00   Min.   : 0.000   Min.   : 0.00   Min.   :     0  
-     1st Qu.: 9.00   1st Qu.: 3.900   1st Qu.:38.45   1st Qu.: 35850  
-     Median :11.60   Median : 5.300   Median :43.50   Median : 44400  
-     Mean   :13.13   Mean   : 5.869   Mean   :44.54   Mean   : 52016  
-     3rd Qu.:15.30   3rd Qu.: 7.200   3rd Qu.:50.70   3rd Qu.: 58600  
-     Max.   :53.40   Max.   :37.900   Max.   :81.40   Max.   :500001  
-                                                                      
-          rent          popdens            crowded          ginirev      
-     Min.   :  0.0   Min.   :    0.00   Min.   : 0.000   Min.   :0.0000  
-     1st Qu.:255.0   1st Qu.:   15.40   1st Qu.: 1.800   1st Qu.:0.3900  
-     Median :297.0   Median :   38.60   Median : 2.600   Median :0.4200  
-     Mean   :313.3   Mean   :  193.77   Mean   : 3.607   Mean   :0.4135  
-     3rd Qu.:352.0   3rd Qu.:   93.15   3rd Qu.: 4.500   3rd Qu.:0.4400  
-     Max.   :926.0   Max.   :53801.10   Max.   :44.400   Max.   :0.5800  
-                                                                         
-       SmokecurM         SmokevrM       SmokecurF         SmokevrF     
-     Min.   :0.0000   Min.   :0.000   Min.   :0.0000   Min.   :0.0000  
-     1st Qu.:0.2200   1st Qu.:0.490   1st Qu.:0.1900   1st Qu.:0.3900  
-     Median :0.2400   Median :0.520   Median :0.2100   Median :0.4200  
-     Mean   :0.2415   Mean   :0.505   Mean   :0.2085   Mean   :0.4122  
-     3rd Qu.:0.2700   3rd Qu.:0.540   3rd Qu.:0.2400   3rd Qu.:0.4600  
-     Max.   :0.5800   Max.   :0.780   Max.   :0.4200   Max.   :0.6300  
-                                                                       
-         Obese            Noins          XYLENES__M          TOLUENE        
-     Min.   :0.0000   Min.   :0.0000   Min.   :    0.00   Min.   :    0.00  
-     1st Qu.:0.3200   1st Qu.:0.1000   1st Qu.:   26.80   1st Qu.:   44.34  
-     Median :0.3400   Median :0.1200   Median :   57.98   Median :   91.07  
-     Mean   :0.3345   Mean   :0.1293   Mean   :  222.20   Mean   :  335.63  
-     3rd Qu.:0.3600   3rd Qu.:0.1500   3rd Qu.:  169.79   3rd Qu.:  255.01  
-     Max.   :0.6300   Max.   :0.4100   Max.   :16661.05   Max.   :28305.10  
-                                                                            
-       TETRACHLOR          STYRENE           NICKEL_COM         METHYLENE_     
-     Min.   :   0.000   Min.   :   0.000   Min.   : 0.00000   Min.   :   0.00  
-     1st Qu.:   0.740   1st Qu.:   0.840   1st Qu.: 0.00485   1st Qu.:   1.55  
-     Median :   1.860   Median :   1.850   Median : 0.01000   Median :   3.88  
-     Mean   :  13.724   Mean   :  15.422   Mean   : 0.37084   Mean   :  26.40  
-     3rd Qu.:   6.625   3rd Qu.:   8.085   3rd Qu.: 0.11000   3rd Qu.:  12.47  
-     Max.   :1966.560   Max.   :1413.040   Max.   :69.01000   Max.   :2764.20  
-                                                                               
-       MERCURY_CO        LEAD_COMPO          BENZENE__I        ARSENIC_CO      
-     Min.   :0.00000   Min.   :  0.00000   Min.   :   0.00   Min.   : 0.00000  
-     1st Qu.:0.00153   1st Qu.:  0.00608   1st Qu.:  22.45   1st Qu.: 0.00034  
-     Median :0.00430   Median :  0.02000   Median :  41.81   Median : 0.00166  
-     Mean   :0.05739   Mean   :  0.82285   Mean   : 105.49   Mean   : 0.11253  
-     3rd Qu.:0.02000   3rd Qu.:  0.23000   3rd Qu.:  96.44   3rd Qu.: 0.01500  
-     Max.   :3.22000   Max.   :290.63000   Max.   :4612.35   Max.   :32.47000  
-                                                                               
-        POP2000          POP00SQMIL          MALE2000         FEMALE2000     
-     Min.   :      0   Min.   :    0.00   Min.   :      0   Min.   :      0  
-     1st Qu.:  11343   1st Qu.:   17.45   1st Qu.:   5583   1st Qu.:   5598  
-     Median :  24747   Median :   43.10   Median :  12272   Median :  12512  
-     Mean   :  89145   Mean   :  244.36   Mean   :  43726   Mean   :  45419  
-     3rd Qu.:  61896   3rd Qu.:  104.95   3rd Qu.:  30370   3rd Qu.:  31548  
-     Max.   :9519338   Max.   :66934.30   Max.   :4704105   Max.   :4815233  
-                                                                             
-        MAL2FEM          UNDER18           AIAN            ASIA      
-     Min.   :  0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
-     1st Qu.: 94.00   1st Qu.:23.70   1st Qu.: 0.20   1st Qu.: 0.20  
-     Median : 97.00   Median :25.30   Median : 0.30   Median : 0.30  
-     Mean   : 98.34   Mean   :25.47   Mean   : 1.61   Mean   : 0.77  
-     3rd Qu.:100.00   3rd Qu.:27.10   3rd Qu.: 0.80   3rd Qu.: 0.70  
-     Max.   :205.00   Max.   :45.30   Max.   :94.20   Max.   :30.80  
-                                                                     
-         BLACK             NHPI             WHITE         AIAN_MORE     
-     Min.   : 0.000   Min.   :0.00000   Min.   : 0.00   Min.   : 0.000  
-     1st Qu.: 0.300   1st Qu.:0.00000   1st Qu.:77.10   1st Qu.: 0.500  
-     Median : 1.700   Median :0.00000   Median :91.30   Median : 0.800  
-     Mean   : 8.832   Mean   :0.03603   Mean   :84.69   Mean   : 2.223  
-     3rd Qu.:10.100   3rd Qu.:0.10000   3rd Qu.:96.70   3rd Qu.: 1.400  
-     Max.   :86.500   Max.   :1.50000   Max.   :99.70   Max.   :95.100  
-                                                                        
-       ASIA_MORE          BLK_MORE        NHPI_MORE          WHT_MORE    
-     Min.   : 0.0000   Min.   : 0.000   Min.   :0.00000   Min.   : 0.00  
-     1st Qu.: 0.3000   1st Qu.: 0.400   1st Qu.:0.00000   1st Qu.:79.00  
-     Median : 0.5000   Median : 2.100   Median :0.10000   Median :92.60  
-     Mean   : 0.9749   Mean   : 9.128   Mean   :0.09952   Mean   :85.92  
-     3rd Qu.: 0.9000   3rd Qu.:10.700   3rd Qu.:0.10000   3rd Qu.:97.60  
-     Max.   :32.6000   Max.   :86.700   Max.   :2.60000   Max.   :99.90  
-                                                                         
-        HISP_LAT        CH19902000       MEDAGE2000      PEROVER65   
-     Min.   : 0.000   Min.   :-37.40   Min.   : 0.00   Min.   : 0.0  
-     1st Qu.: 0.900   1st Qu.:  1.00   1st Qu.:35.20   1st Qu.:12.1  
-     Median : 1.800   Median :  8.40   Median :37.40   Median :14.4  
-     Mean   : 6.183   Mean   : 11.08   Mean   :37.34   Mean   :14.8  
-     3rd Qu.: 5.100   3rd Qu.: 17.40   3rd Qu.:39.80   3rd Qu.:17.1  
-     Max.   :97.500   Max.   :191.00   Max.   :54.30   Max.   :34.7  
-                                                                     
+        DPTOMPIO      DPTO_CCDGO    MPIO_CCDGO        MPIO_CNMBR     MPIO_CCNCT  
+     05001  :   1   05     :125   001    :  33   BUENAVISTA:   4   05001  :   1  
+     05002  :   1   15     :123   250    :   8   LA UNIÃ“N :   4   05002  :   1  
+     05004  :   1   25     :116   318    :   7   VILLANUEVA:   4   05004  :   1  
+     05021  :   1   68     : 87   400    :   7   ALBANIA   :   3   05021  :   1  
+     05030  :   1   52     : 64   660    :   7   ARGELIA   :   3   05030  :   1  
+     05031  :   1   73     : 47   245    :   6   BOLÃ\215VAR  :   3   05031  :   1  
+     (Other):1115   (Other):559   (Other):1053   (Other)   :1100   (Other):1115  
+
+
+Y, como observamos, ya se encuentra referenciado: `Is projected: TRUE`, `proj4string : [+proj=utm +zone=17 +datum=WGS84]`.
+
+## Proyección de Puntos
+
+Para esta parte del ejercicio vamos a emplear una combinación de todos los datos, es decir, vamos a trabajar bajo el esquema de **base de datos**.
+
+Lo primero que haremos será extraer las coordenadas y convertirlas en un `data.frame` identificando la que corresponde a Latitud y a Longitud:
+
+
+```R
+coord<-coordinates(map)     # Extraemos las coordenadas
+coord<-as.data.frame(coord) # Las convertimos en un data.frame ordenado
+coord$LON<-coord$V1         # Creamos el vector de Longitud
+coord$LAT<-coord$V2         # Creamos el vector de Latitud
+# Quitamos lo que no requerimos
+coord$V1<-NULL
+coord$V2<-NULL
+```
+
+Ahora, tenemos el sistema de coordenadas en una tabla que vamos a incorporar al componente `data` del mapa con el fin de asociar adecuadamente los códigos de los municipios:
+
+
+```R
+head(P.Total.Mun)
+map@data<-data.frame(map@data, coord)
+```
+
+
+<table>
+<thead><tr><th scope=col>P_MUNIC</th><th scope=col>P_S7P100</th></tr></thead>
+<tbody>
+	<tr><td>05001      </td><td>  192.67940</td></tr>
+	<tr><td>05002      </td><td>  836.38300</td></tr>
+	<tr><td>05021      </td><td>    6.77500</td></tr>
+	<tr><td>05030      </td><td>    9.88823</td></tr>
+	<tr><td>05031      </td><td> 7902.19400</td></tr>
+	<tr><td>05034      </td><td>63737.11640</td></tr>
+</tbody>
+</table>
+
 
 
 
 ```R
-names(election)
+head(map@data)
+```
+
+
+<table>
+<thead><tr><th></th><th scope=col>DPTOMPIO</th><th scope=col>DPTO_CCDGO</th><th scope=col>MPIO_CCDGO</th><th scope=col>MPIO_CNMBR</th><th scope=col>MPIO_CCNCT</th><th scope=col>LON</th><th scope=col>LAT</th></tr></thead>
+<tbody>
+	<tr><th scope=row>0</th><td>05001      </td><td>05         </td><td>001        </td><td>MEDELLÃN  </td><td>05001      </td><td>-75.61147  </td><td>6.257732   </td></tr>
+	<tr><th scope=row>1</th><td>05002      </td><td>05         </td><td>002        </td><td>ABEJORRAL  </td><td>05002      </td><td>-75.43848  </td><td>5.803901   </td></tr>
+	<tr><th scope=row>2</th><td>05004      </td><td>05         </td><td>004        </td><td>ABRIAQUÃ  </td><td>05004      </td><td>-76.08520  </td><td>6.625289   </td></tr>
+	<tr><th scope=row>3</th><td>05021      </td><td>05         </td><td>021        </td><td>ALEJANDRÃA</td><td>05021      </td><td>-75.09016  </td><td>6.366462   </td></tr>
+	<tr><th scope=row>4</th><td>05030      </td><td>05         </td><td>030        </td><td>AMAGÃ     </td><td>05030      </td><td>-75.70766  </td><td>6.032703   </td></tr>
+	<tr><th scope=row>5</th><td>05031      </td><td>05         </td><td>031        </td><td>AMALFI     </td><td>05031      </td><td>-74.98064  </td><td>6.978345   </td></tr>
+</tbody>
+</table>
+
+
+
+Vamos a simplificar el sistema usando sólo los vectores clave del mapa
+
+
+```R
+datab<-map@data[,c(1,6,7)]
+head(datab)
+```
+
+
+<table>
+<thead><tr><th></th><th scope=col>DPTOMPIO</th><th scope=col>LON</th><th scope=col>LAT</th></tr></thead>
+<tbody>
+	<tr><th scope=row>0</th><td>05001    </td><td>-75.61147</td><td>6.257732 </td></tr>
+	<tr><th scope=row>1</th><td>05002    </td><td>-75.43848</td><td>5.803901 </td></tr>
+	<tr><th scope=row>2</th><td>05004    </td><td>-76.08520</td><td>6.625289 </td></tr>
+	<tr><th scope=row>3</th><td>05021    </td><td>-75.09016</td><td>6.366462 </td></tr>
+	<tr><th scope=row>4</th><td>05030    </td><td>-75.70766</td><td>6.032703 </td></tr>
+	<tr><th scope=row>5</th><td>05031    </td><td>-74.98064</td><td>6.978345 </td></tr>
+</tbody>
+</table>
+
+
+
+Como requerimos unir este objeto con el denominado `P.Total.Mun` cambiaremos el nombre del vector de enlace:
+
+
+```R
+datab$P_MUNIC<-datab$DPTOMPIO
+datab$DPTOMPIO<-NULL
+head(datab)
+```
+
+
+<table>
+<thead><tr><th></th><th scope=col>LON</th><th scope=col>LAT</th><th scope=col>P_MUNIC</th></tr></thead>
+<tbody>
+	<tr><th scope=row>0</th><td>-75.61147</td><td>6.257732 </td><td>05001    </td></tr>
+	<tr><th scope=row>1</th><td>-75.43848</td><td>5.803901 </td><td>05002    </td></tr>
+	<tr><th scope=row>2</th><td>-76.08520</td><td>6.625289 </td><td>05004    </td></tr>
+	<tr><th scope=row>3</th><td>-75.09016</td><td>6.366462 </td><td>05021    </td></tr>
+	<tr><th scope=row>4</th><td>-75.70766</td><td>6.032703 </td><td>05030    </td></tr>
+	<tr><th scope=row>5</th><td>-74.98064</td><td>6.978345 </td><td>05031    </td></tr>
+</tbody>
+</table>
+
+
+
+Y, la debemos unir con
+
+
+```R
+head(P.Total.Mun)
+```
+
+
+<table>
+<thead><tr><th scope=col>P_MUNIC</th><th scope=col>P_S7P100</th></tr></thead>
+<tbody>
+	<tr><td>05001      </td><td>  192.67940</td></tr>
+	<tr><td>05002      </td><td>  836.38300</td></tr>
+	<tr><td>05021      </td><td>    6.77500</td></tr>
+	<tr><td>05030      </td><td>    9.88823</td></tr>
+	<tr><td>05031      </td><td> 7902.19400</td></tr>
+	<tr><td>05034      </td><td>63737.11640</td></tr>
+</tbody>
+</table>
+
+
+
+Veamos las dimensiones de cada `data.frame`:
+
+
+```R
+dim(P.Total.Mun); dim(datab)
 ```
 
 
 <ol class=list-inline>
-	<li>'NAME'</li>
-	<li>'STATE_NAME'</li>
-	<li>'STATE_FIPS'</li>
-	<li>'CNTY_FIPS'</li>
-	<li>'FIPS'</li>
-	<li>'AREA'</li>
-	<li>'FIPS_num'</li>
-	<li>'Bush'</li>
-	<li>'Kerry'</li>
-	<li>'County_F'</li>
-	<li>'Nader'</li>
-	<li>'Total'</li>
-	<li>'Bush_pct'</li>
-	<li>'Kerry_pct'</li>
-	<li>'Nader_pct'</li>
-	<li>'MDratio'</li>
-	<li>'hosp'</li>
-	<li>'pcthisp'</li>
-	<li>'pcturban'</li>
-	<li>'urbrural'</li>
-	<li>'pctfemhh'</li>
-	<li>'pcincome'</li>
-	<li>'pctpoor'</li>
-	<li>'pctlt9ed'</li>
-	<li>'pcthsed'</li>
-	<li>'pctcoled'</li>
-	<li>'unemploy'</li>
-	<li>'pctwhtcl'</li>
-	<li>'homevalu'</li>
-	<li>'rent'</li>
-	<li>'popdens'</li>
-	<li>'crowded'</li>
-	<li>'ginirev'</li>
-	<li>'SmokecurM'</li>
-	<li>'SmokevrM'</li>
-	<li>'SmokecurF'</li>
-	<li>'SmokevrF'</li>
-	<li>'Obese'</li>
-	<li>'Noins'</li>
-	<li>'XYLENES__M'</li>
-	<li>'TOLUENE'</li>
-	<li>'TETRACHLOR'</li>
-	<li>'STYRENE'</li>
-	<li>'NICKEL_COM'</li>
-	<li>'METHYLENE_'</li>
-	<li>'MERCURY_CO'</li>
-	<li>'LEAD_COMPO'</li>
-	<li>'BENZENE__I'</li>
-	<li>'ARSENIC_CO'</li>
-	<li>'POP2000'</li>
-	<li>'POP00SQMIL'</li>
-	<li>'MALE2000'</li>
-	<li>'FEMALE2000'</li>
-	<li>'MAL2FEM'</li>
-	<li>'UNDER18'</li>
-	<li>'AIAN'</li>
-	<li>'ASIA'</li>
-	<li>'BLACK'</li>
-	<li>'NHPI'</li>
-	<li>'WHITE'</li>
-	<li>'AIAN_MORE'</li>
-	<li>'ASIA_MORE'</li>
-	<li>'BLK_MORE'</li>
-	<li>'NHPI_MORE'</li>
-	<li>'WHT_MORE'</li>
-	<li>'HISP_LAT'</li>
-	<li>'CH19902000'</li>
-	<li>'MEDAGE2000'</li>
-	<li>'PEROVER65'</li>
+	<li>1052</li>
+	<li>2</li>
 </ol>
 
 
 
-Con el fin de editar los datos (si es necesario), creamos una nueva base de datos con la información electoral:
+
+<ol class=list-inline>
+	<li>1121</li>
+	<li>3</li>
+</ol>
+
+
+
+Como no coinciden, debemos usar la función `merge` para unirlas:
 
 
 ```R
-data <- election
+T.A.Mun<-merge(P.Total.Mun,  datab)
+summary(T.A.Mun)
 ```
 
-Ahora extraemos la información espacial:
+
+       P_MUNIC             P_S7P100             LON              LAT        
+     Length:1051        Min.   :       0   Min.   :-81.72   Min.   :-3.642  
+     Class :character   1st Qu.:     169   1st Qu.:-75.80   1st Qu.: 4.233  
+     Mode  :character   Median :    2629   Median :-74.79   Median : 5.538  
+                        Mean   :   58867   Mean   :-74.71   Mean   : 5.627  
+                        3rd Qu.:   19782   3rd Qu.:-73.51   3rd Qu.: 7.028  
+                        Max.   :11408723   Max.   :-67.00   Max.   :13.351  
+
+
+### Función `ggplot`
+
+Para la primera visualización vamos a emplear la función `ggplot` de la librería `ggplot2`.
+Debemos crear intervalos usando la función `cut` con el fin de poder hacer los primeros descriptivos:
 
 
 ```R
-summary(data)[1:4]
+library('ggplot2')
+T.A.Mun$Int<-cut(T.A.Mun$P_S7P100, breaks = c(0,200,5000,50000,100000,12000000))
+summary(T.A.Mun$Int)
 ```
 
 
-<dl>
-	<dt>$class</dt>
-		<dd>'SpatialPolygonsDataFrame'</dd>
-	<dt>$bbox</dt>
-		<dd><table>
-<thead><tr><th></th><th scope=col>min</th><th scope=col>max</th></tr></thead>
-<tbody>
-	<tr><th scope=row>r1</th><td>-124.73142</td><td>-66.96985 </td></tr>
-	<tr><th scope=row>r2</th><td>  24.95597</td><td> 49.37173 </td></tr>
-</tbody>
-</table>
-</dd>
-	<dt>$is.projected</dt>
-		<dd>TRUE</dd>
-	<dt>$proj4string</dt>
-		<dd>'+proj=lcc+lon_0=90w +lat_1=20n +lat_2=60n'</dd>
+<dl class=dl-horizontal>
+	<dt>(0,200]</dt>
+		<dd>232</dd>
+	<dt>(200,5e+03]</dt>
+		<dd>318</dd>
+	<dt>(5e+03,5e+04]</dt>
+		<dd>295</dd>
+	<dt>(5e+04,1e+05]</dt>
+		<dd>62</dd>
+	<dt>(1e+05,1.2e+07]</dt>
+		<dd>100</dd>
+	<dt>NA's</dt>
+		<dd>44</dd>
 </dl>
 
 
 
-Veamos de qué se trata el gráfico:
+Hagamos un gráfico básico
 
 
 ```R
-par(mar=c(0,0,0,0))
-plot(data)
-```
-
-
-![png](output_36_0.png)
-
-
-Ahora, incorporemos los datos de criminalidad a la base de datos geográfica (el mapa):
-
-
-```R
-par(mar=rep(0.5,4))
-plot(election,xlim=bbox(data.sp)[1,],ylim=bbox(data.sp)[2,],col="beige")
-plot(data.sp,pch=19, cex=.5,add=T, col="blue")
-```
-
-
-![png](output_38_0.png)
-
-
-## Otra forma de visualización de datos
-
-Necesitamos cargar algunas librerías que ayudarán al a visualización. _¿Qué librerías se usan acá que también se usaron en el ejercicio anterior?_
-
-
-```R
-library("sp")
-library("raster")
-library("rasterVis")
-library("maptools")
-library("rgdal")
-library("gstat")
-library("maps")
-library("mapdata")
-library("mapproj")
-library("ggmap")
-library("ggplot2")
-library("lattice")
-library("latticeExtra")
-#library("OpenStreetMap") sobre la carga de este paquete se discutirá más adelante
-```
-
-**NOTA**: En caso que las librerías no se encuentren instaladas debe procederse a la instalación cambiando, en el fragmento de código anterior, la expresión library por _install.packages()_. Luego de instaladas se ejecuta el código anterior.
-
-### Configuración del espacio de trabajo
-
-En primer lugar, debemos definir el entorno de trabajo para lo cual se crean algunos objetos:
-
-
-```R
-myTheme <- custom.theme.2(pch=19, cex=0.7,
-                            region=rev(brewer.pal(9, 'YlOrRd')),
-                            symbol = brewer.pal(n=8, name = "Dark2"))
-myTheme$strip.background$col='transparent'
-  myTheme$strip.shingle$col='transparent'
-  myTheme$strip.border$col='transparent'
-  
-  xscale.components.custom <- function(...){
-      ans <- xscale.components.default(...)
-      ans$top=FALSE
-      ans}
-  yscale.components.custom <- function(...){
-      ans <- yscale.components.default(...)
-      ans$right=FALSE
-      ans}
-  myArgs <- list(as.table=TRUE,
-                 between=list(x=0.5, y=0.2),
-                 xscale.components = xscale.components.custom,
-                 yscale.components = yscale.components.custom)
-  defaultArgs <- lattice.options()$default.args
-  
-  lattice.options(default.theme = myTheme,
-                  default.args = modifyList(defaultArgs, myArgs))
-```
-
-Ahora, carguemos los objetos que vamos a visualizar:
-
-
-```R
-load("NO2sp.Rdata")  # Cargamos los objetos
-ls()                 # Listamos los objetos creados hasta el momento
-class(NO2sp)         # Identificamos el tipo de objeto
-str(NO2sp)           # Revismos la Estructura del Objeto Espacial
-```
-
-
-<ol class=list-inline>
-	<li>'crime'</li>
-	<li>'dat88'</li>
-	<li>'data'</li>
-	<li>'data.sp'</li>
-	<li>'defaultArgs'</li>
-	<li>'election'</li>
-	<li>'laos'</li>
-	<li>'mat88'</li>
-	<li>'myArgs'</li>
-	<li>'myTheme'</li>
-	<li>'NO2sp'</li>
-	<li>'proj'</li>
-	<li>'sp_point'</li>
-	<li>'volcano'</li>
-	<li>'xscale.components.custom'</li>
-	<li>'yscale.components.custom'</li>
-</ol>
-
-
-
-
-'SpatialPointsDataFrame'
-
-
-    Formal class 'SpatialPointsDataFrame' [package "sp"] with 5 slots
-      ..@ data       :'data.frame':	24 obs. of  6 variables:
-      .. ..$ Nombre: Factor w/ 24 levels "Arturo Soria",..: 17 16 4 10 7 2 23 1 24 6 ...
-      .. ..$ alt   : int [1:24] 657 637 673 672 699 708 677 698 NA 581 ...
-      .. ..$ codEst: num [1:24] 28079035 28079004 28079039 28079008 28079038 ...
-      .. ..$ mean  : num [1:24] 51 50.6 49.3 59.6 54.6 53.6 44.2 44.1 45.8 40 ...
-      .. ..$ median: num [1:24] 46 49 43 58 51 51 41 41 38 37 ...
-      .. ..$ sd    : num [1:24] 18.6 18.3 24.2 17.7 22.7 21.8 20 19.2 24.9 19.8 ...
-      ..@ coords.nrs : num(0) 
-      ..@ coords     : num [1:24, 1:2] -3.7 -3.71 -3.71 -3.68 -3.71 ...
-      .. ..- attr(*, "dimnames")=List of 2
-      .. .. ..$ : NULL
-      .. .. ..$ : chr [1:2] "long" "lat"
-      ..@ bbox       : num [1:2, 1:2] -3.77 40.33 -3.58 40.52
-      .. ..- attr(*, "dimnames")=List of 2
-      .. .. ..$ : chr [1:2] "long" "lat"
-      .. .. ..$ : chr [1:2] "min" "max"
-      ..@ proj4string:Formal class 'CRS' [package "sp"] with 1 slot
-      .. .. ..@ projargs: chr "+proj=longlat +ellps=WGS84 +datum=WGS84 +towgs84=0,0,0"
-    
-
-Grafiquemos haciendo uso de las funciones en la librería _"sp"_:
-
-
-```R
-library("sp")
-airPal <- colorRampPalette(c("springgreen1", "sienna3", "gray5"))(5)
-
-spplot(NO2sp["mean"],col.regions=airPal, cex=sqrt(1:5),
-edge.col="black",scales=list(draw=TRUE),
-key.space="right")
+ggplot(data = na.omit(T.A.Mun), aes(LON, LAT)) +geom_point(pch=3, col="black") + theme_bw()
 ```
 
 
 
 
-![png](output_49_1.png)
+![png](output_36_1.png)
 
 
-Usemos otra opción asociada a la librería _"ggplot2"_:
+Y uno más completo:
 
 
 ```R
-library("ggplot2")
-NO2df<-data.frame(NO2sp)      # Convertimos el objeto espacial en base de datos plana
-NO2df$Mean<-cut(NO2sp$mean,5) # Intervalos para la media
-
-ggplot(data=NO2df, aes(long, lat, size=Mean, fill=Mean)) +
-geom_point(pch=21, col="black") + theme_bw() +
-scale_fill_manual(values=airPal)
+airPal <- colorRampPalette(c("springgreen1", "sienna3", "gray5"))(6)
+ggplot(data = na.omit(T.A.Mun), aes(LON, LAT, size = Int, fill = Int)) + 
+  geom_point(pch=21, col="black") + theme_bw() +
+  scale_fill_manual(values=airPal)
 ```
 
     Warning message:
@@ -641,108 +456,279 @@ scale_fill_manual(values=airPal)
 
 
 
-![png](output_51_2.png)
+![png](output_38_2.png)
 
 
-Podemos optimizar la clasificación construyendo intervalos de clase usando funciones de la librería _"classInt"_:
+El mapa es bastante básico. Podemos mejorarlo e incorporarlo a un sistema más completo, por ejemplo, **Google**. Veamos la siguiente sintaxis:
 
 
 ```R
 library(classInt)
 nClasses <- 5
-intervals <- classIntervals(NO2sp$mean, n=nClasses, style="fisher")
+intervals <- classIntervals(T.A.Mun$P_S7P100, n=nClasses, style="fisher")
 nClasses <- length(intervals$brks) - 1
 op <- options(digits=4)
 tab <- print(intervals)
 options(op)
 
-dent <- c(0.64, 1.14, 1.65, 2.79, 4.32, 6.22, 9.65, 12.95, 15.11)
+dent <- c(1,2,3,4,5,6)
 dentAQ <- dent[seq_len(nClasses)]
 idx <- findCols(intervals)
-cexNO2 <- dentAQ[idx]
+cexAcui <- dentAQ[idx]
 
-NO2sp$classNO2 <- factor(names(tab)[idx])
-
-
-NO2df <- data.frame(NO2sp)
-
-ggplot(data=NO2df, aes(long, lat, size=classNO2, fill=classNO2)) +
-geom_point(pch=21, col="black") + theme_bw() +
-scale_fill_manual(values=airPal) +
-scale_size_manual(values=dentAQ*2)
+T.A.Mun$classAcui <- factor(names(tab)[idx])
 ```
 
     style: fisher
-      one of 7,315 possible partitions of this variable into 5 classes
-        [22.5,33)    [33,42.05) [42.05,48.95)  [48.95,57.1)   [57.1,62.4] 
-                3             6             7             6             2 
+            [0,125791)    [125791,580652)   [580652,1524659)  [1524659,7304607) 
+                   969                 61                 16                  4 
+    [7304607,11408723] 
+                     1 
     
 
-
-
-
-![png](output_53_2.png)
-
-
-La librería _"spplot"_ ofrece otra opción de visualización:
+Vamos a incorporar esto a un sistema como Google, para ello hacemos uso de las funciones de la librería `ggmap`. Primero, debemos delimitar las coordenadas:
 
 
 ```R
-NO2key <- list(x=0.98, y=0.02, corner=c(1, 0),
-title=expression(NO[2]~~(paste(mu, plain(g))/m^3)),
-cex.title=.75, cex=0.7,
-background="gray92")
-
-pNO2 <- spplot(NO2sp["classNO2"],
-col.regions=airPal, cex=dentAQ,
-edge.col="black",
-scales=list(draw=TRUE),
-key.space=NO2key)
-pNO2
-
-madridBox <- bbox(NO2sp)
+ColBox <- bbox(map)
+ColBox
 ```
 
 
+<table>
+<thead><tr><th></th><th scope=col>min</th><th scope=col>max</th></tr></thead>
+<tbody>
+	<tr><th scope=row>x</th><td>-81.735672</td><td>-66.84722 </td></tr>
+	<tr><th scope=row>y</th><td> -4.228392</td><td> 13.39449 </td></tr>
+</tbody>
+</table>
 
 
-![png](output_55_1.png)
 
-
-Finalmente, podemos usar opciones de la librería _"ggmap"_:
+Ahora, cargamos el mapa:
 
 
 ```R
 library(ggmap)
-madridGG <- get_map(c(madridBox), maptype="toner", source="stamen")
+ColGG <- get_map(c(ColBox), maptype="satellite", source="google")
 ```
 
-    Map from URL : http://tile.stamen.com/toner/12/2005/1542.png
-    Map from URL : http://tile.stamen.com/toner/12/2006/1542.png
-    Map from URL : http://tile.stamen.com/toner/12/2007/1542.png
-    Map from URL : http://tile.stamen.com/toner/12/2005/1543.png
-    Map from URL : http://tile.stamen.com/toner/12/2006/1543.png
-    Map from URL : http://tile.stamen.com/toner/12/2007/1543.png
-    Map from URL : http://tile.stamen.com/toner/12/2005/1544.png
-    Map from URL : http://tile.stamen.com/toner/12/2006/1544.png
-    Map from URL : http://tile.stamen.com/toner/12/2007/1544.png
-    Map from URL : http://tile.stamen.com/toner/12/2005/1545.png
-    Map from URL : http://tile.stamen.com/toner/12/2006/1545.png
-    Map from URL : http://tile.stamen.com/toner/12/2007/1545.png
+    Warning message:
+    "bounding box given to google - spatial extent only approximate."converting bounding box to center/zoom specification. (experimental)
+    Map from URL : http://maps.googleapis.com/maps/api/staticmap?center=4.58305,-74.291444&zoom=6&size=640x640&scale=2&maptype=satellite&language=en-EN&sensor=false
     
+
+Y, lo construimos con la información existente:
 
 
 ```R
-ggmap(madridGG) +
-geom_point(data=NO2df,
-aes(long, lat, size=classNO2, fill=classNO2),
-pch=21, col="black") +
-scale_fill_manual(values=airPal) +
-scale_size_manual(values=dentAQ*2)
+ggmap(ColGG) +
+  geom_point(data=na.omit(T.A.Mun),
+             aes(LON, LAT, size=classAcui, fill=classAcui),
+             pch=21, col="black") +
+  scale_fill_manual(values=airPal) +
+  scale_size_manual(values=dentAQ*2)
+```
+
+    Warning message:
+    "Removed 5 rows containing missing values (geom_point)."
+
+
+
+
+![png](output_46_2.png)
+
+
+### Proyección con Polígonos
+
+Como vimos, otra forma de visualización son los polígonos. Que fue lo que creamos en principio pero sin asociar valores. Para una proyección más limpia, crearemos un nuevo mapa con sistema de coordenadas (obviaremos los comentarios pues ya se hizo al inicio):
+
+
+```R
+map2 <- readShapePoly("Mapas/MunicipiosVeredas")
+summary(map2)
+```
+
+    Warning message:
+    "use rgdal::readOGR or sf::st_read"
+
+
+    Object of class SpatialPolygonsDataFrame
+    Coordinates:
+             min       max
+    x -81.735672 -66.84722
+    y  -4.228392  13.39449
+    Is projected: NA 
+    proj4string : [NA]
+    Data attributes:
+        DPTOMPIO      DPTO_CCDGO    MPIO_CCDGO        MPIO_CNMBR     MPIO_CCNCT  
+     05001  :   1   05     :125   001    :  33   BUENAVISTA:   4   05001  :   1  
+     05002  :   1   15     :123   250    :   8   LA UNIÃ“N :   4   05002  :   1  
+     05004  :   1   25     :116   318    :   7   VILLANUEVA:   4   05004  :   1  
+     05021  :   1   68     : 87   400    :   7   ALBANIA   :   3   05021  :   1  
+     05030  :   1   52     : 64   660    :   7   ARGELIA   :   3   05030  :   1  
+     05031  :   1   73     : 47   245    :   6   BOLÃ\215VAR  :   3   05031  :   1  
+     (Other):1115   (Other):559   (Other):1053   (Other)   :1100   (Other):1115  
+
+
+
+```R
+proj4string(map2) <- CRS("+proj=utm +zone=17 +datum=WGS84")
+summary(map2)
+```
+
+
+    Object of class SpatialPolygonsDataFrame
+    Coordinates:
+             min       max
+    x -81.735672 -66.84722
+    y  -4.228392  13.39449
+    Is projected: TRUE 
+    proj4string : [+proj=utm +zone=17 +datum=WGS84]
+    Data attributes:
+        DPTOMPIO      DPTO_CCDGO    MPIO_CCDGO        MPIO_CNMBR     MPIO_CCNCT  
+     05001  :   1   05     :125   001    :  33   BUENAVISTA:   4   05001  :   1  
+     05002  :   1   15     :123   250    :   8   LA UNIÃ“N :   4   05002  :   1  
+     05004  :   1   25     :116   318    :   7   VILLANUEVA:   4   05004  :   1  
+     05021  :   1   68     : 87   400    :   7   ALBANIA   :   3   05021  :   1  
+     05030  :   1   52     : 64   660    :   7   ARGELIA   :   3   05030  :   1  
+     05031  :   1   73     : 47   245    :   6   BOLÃ\215VAR  :   3   05031  :   1  
+     (Other):1115   (Other):559   (Other):1053   (Other)   :1100   (Other):1115  
+
+
+
+```R
+names(P.Total.Mun)
+```
+
+
+<ol class=list-inline>
+	<li>'P_MUNIC'</li>
+	<li>'P_S7P100'</li>
+</ol>
+
+
+
+
+```R
+P.Total.Mun$DPTOMPIO<-factor(P.Total.Mun$P_MUNIC)
+P.Total.Mun$P_MUNIC<-NULL
+P.Total.Mun$Acuiq<-P.Total.Mun$P_S7P100
+P.Total.Mun$P_S7P100<-NULL
+```
+
+
+```R
+map2@data<-map2@data[,c(1,2,3)]
+summary(map2)
+```
+
+
+    Object of class SpatialPolygonsDataFrame
+    Coordinates:
+             min       max
+    x -81.735672 -66.84722
+    y  -4.228392  13.39449
+    Is projected: TRUE 
+    proj4string : [+proj=utm +zone=17 +datum=WGS84]
+    Data attributes:
+        DPTOMPIO      DPTO_CCDGO    MPIO_CCDGO  
+     05001  :   1   05     :125   001    :  33  
+     05002  :   1   15     :123   250    :   8  
+     05004  :   1   25     :116   318    :   7  
+     05021  :   1   68     : 87   400    :   7  
+     05030  :   1   52     : 64   660    :   7  
+     05031  :   1   73     : 47   245    :   6  
+     (Other):1115   (Other):559   (Other):1053  
+
+
+Ahora, vamos a incorporar a este sistema los datos consolidados de acuicultura (`T.Total.Mun`). Para ello usamos la función `left_join` de la librería `dplyr`:
+
+
+```R
+library(dplyr)
+map2@data <- left_join(map2@data, P.Total.Mun)
+```
+
+    
+    Attaching package: 'dplyr'
+    
+    The following objects are masked from 'package:stats':
+    
+        filter, lag
+    
+    The following objects are masked from 'package:base':
+    
+        intersect, setdiff, setequal, union
+    
+    Joining, by = "DPTOMPIO"
+    Warning message:
+    "Column `DPTOMPIO` joining factors with different levels, coercing to character vector"
+
+Finalmente, proyectamos. Usamos la función `qtm` de la librería `tmap`. Cabe aclarar que, para efectos prácticos, hemos seleccionado los intervalos nosotros mismos:
+
+
+```R
+library(tmap)
+qtm(map2,"Acuiq", fill.breaks = c(0,1000,10000,50000,100000,1000000,5000000,10000000,15000000))
+```
+
+
+
+
+![png](output_56_1.png)
+
+
+Adicionalmente, podemos ir al detalle de cada departamento para observar la situación en esa zona en particular. cabe anotar que necesitamos conocer los estadísticos básicos para constrir intervalos más adecuados:
+
+#### Santander:
+
+
+```R
+qtm(map2[map2$DPTO_CCDGO=="68",],"Acuiq", fill.breaks = c(0,5000,10000,50000,100000,500000,1000000,5000000))
 ```
 
 
 
 
 ![png](output_58_1.png)
+
+
+#### Antioquia
+
+
+```R
+qtm(map2[map2$DPTO_CCDGO=="05",],"Acuiq", fill.breaks = c(0,500,1000,5000,10000,50000,100000,500000))
+```
+
+
+
+
+![png](output_60_1.png)
+
+
+#### Atlántico
+
+
+```R
+qtm(map2[map2$DPTO_CCDGO=="08",],"Acuiq", fill.breaks = c(0,50,100,500,1000,50000))
+```
+
+
+
+
+![png](output_62_1.png)
+
+
+#### Bolívar
+
+
+```R
+qtm(map2[map2$DPTO_CCDGO=="13",],"Acuiq", fill.breaks = c(0,10000,15000,20000,25000,50000,100000,150000,200000,250000))
+```
+
+
+
+
+![png](output_64_1.png)
 
