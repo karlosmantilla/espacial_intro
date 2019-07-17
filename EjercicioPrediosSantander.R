@@ -1,7 +1,7 @@
-library(rgdal)    # Importación de Datos (puntos, líneas, polígonos)
-library(maptools) # Herramientas de Visualización
-library(gstat)    # Geoestadística
-library(spatstat) # Geoestadística
+library(rgdal)    # ImportaciÃ³n de Datos (puntos, lÃ­neas, polÃ­gonos)
+library(maptools) # Herramientas de VisualizaciÃ³n
+library(gstat)    # GeoestadÃ­stica
+library(spatstat) # GeoestadÃ­stica
 library(plotly)   # Proyecciones
 
 mapa1 <- readOGR(dsn = '68_R_TERRENO', layer = 'R_TERRENO')
