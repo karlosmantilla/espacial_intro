@@ -81,20 +81,3 @@ geom_polygon(data = fortify(municipios[municipios@data$DPTO_CCDGO=='68',]),
                   fill = "grey", colour = "black", alpha = 0.2)
 
 print(mapasder)
-
-plot(departamentos[departamentos@data$DPTO_CCDGO=='15',]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
